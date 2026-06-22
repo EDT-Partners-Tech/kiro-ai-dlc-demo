@@ -1,16 +1,16 @@
-# kiro-ai-dlc-demo
+# kiro-ai-dlc-demo: CloudSpend Analytics API
 
-A small **Blog Posts REST API** built end‑to‑end with **AI‑DLC (AI Development Life Cycle)** —
+A **Cloud Cost Analytics REST API** built end‑to‑end with **AI‑DLC (AI Development Life Cycle)** —
 AWS's spec‑driven, phase‑gated methodology for building software with an AI agent — driven from
 [**Kiro**](https://kiro.dev), AWS's agentic IDE.
 
 This repository is a **demo, not a product**. Its purpose is to show — at a deliberately small scale —
-what AI‑DLC looks like in practice: instead of prompting an agent to "just write the code," you move the
+what AI‑DLC looks like in practice applied to a **FinOps use case**: instead of prompting an agent to "just write the code," you move the
 work through explicit, human‑approved phases (**Inception → Construction → Operations**). At every gate
 the agent writes a versioned artifact (requirements, NFR design, code‑generation plan, test report),
 records every interaction in an audit log, and only proceeds once you approve.
 
-The application itself is intentionally tiny so the *process* is the star of the show. The full trail of
+The application itself is intentionally scoped so the *process* is the star of the show. The full trail of
 how this app was produced lives in [`aidlc-docs/`](aidlc-docs/), and the methodology that drove it lives
 in [`.kiro/`](.kiro/).
 
@@ -18,36 +18,34 @@ in [`.kiro/`](.kiro/).
 
 ## What the app does
 
-A pure backend JSON API for managing blog posts and their tags. No auth, no frontend, no UI — just a
-handful of endpoints over SQLite.
+A pure backend JSON API for cloud cost analytics and FinOps optimization. It helps organizations ingest cloud cost data, detect spending anomalies, analyze trends, and discover cost optimization opportunities. No auth, no frontend, no UI — just a handful of REST endpoints over SQLite.
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/posts` | Create a post (`title`, `content`, optional `tags`) |
-| `GET` | `/posts` | List posts — **cursor‑based** pagination (`cursor`, `limit`) and filterable by `tag` |
-| `GET` | `/posts/{id}` | Fetch a single post |
-| `PATCH` | `/posts/{id}` | Partial update (any subset of `title`, `content`, `tags`) |
-| `DELETE` | `/posts/{id}` | Delete a post |
+| `POST` | `/cost-data` | Ingest cloud cost metrics (service, amount, timestamp, tags) |
+| `GET` | `/cost-data/daily` | Daily spending trends — **cursor‑based** pagination and filterable by `service` |
+| `GET` | `/cost-data/anomalies` | Detect unusual spending spikes by service |
+| `GET` | `/optimization/recommendations` | List cost optimization opportunities (e.g., unused resources) |
+| `PATCH` | `/optimization/{id}` | Mark recommendation as implemented/dismissed |
+| `DELETE` | `/cost-data/{id}` | Remove a cost entry |
 | `GET` | `/health` | Liveness check |
 | `GET` | `/` | API info (name, version, doc links) |
 
 Interactive docs are served at `/docs` (Swagger UI) and `/redoc` (ReDoc).
 
-**Tech stack:** Python 3.9+ · FastAPI · SQLModel + SQLite · Pydantic v2 · pytest + Hypothesis
-(property‑based tests). Two extensions were opted into during Inception and enforced as **blocking
-constraints** for the whole build: a **Security Baseline** (HTTP security headers, server‑side input
-validation, safe error handling) and **Property‑Based Testing**.
+**Tech stack:** Python 3.11 · FastAPI · SQLModel + SQLite · Pydantic v2 · pytest + Hypothesis
+(property‑based tests). Two extensions are enforced as **blocking constraints** for the whole build: a **Security Baseline** (HTTP security headers, server‑side input validation, strict error handling for financial data) and **Property‑Based Testing** (cost calculations verified across random inputs).
 
 ---
 
 ## Run it locally
 
 ```bash
-# 1. Create a virtual environment and install dependencies
-python3 -m venv .venv
+# 1. Create a virtual environment and install dependencies (requires Python 3.11)
+python3.11 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-# 2. Start the API (auto‑creates blog-posts.db on first run)
+# 2. Start the API (auto‑creates cloudspend.db on first run)
 .venv/bin/python3 -m uvicorn main:app --reload
 
 # 3. Open the interactive docs
@@ -58,23 +56,26 @@ python3 -m venv .venv
 Quick smoke test once it's running:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/posts \
+# Ingest a cost metric
+curl -X POST http://127.0.0.1:8000/cost-data \
   -H "Content-Type: application/json" \
-  -d '{"title": "Hello AI-DLC", "content": "First post.", "tags": ["demo", "aws"]}'
+  -d '{"service": "EC2", "amount": 150.50, "timestamp": "2026-06-19T10:00:00Z", "tags": ["production", "web"]}'
 
-curl "http://127.0.0.1:8000/posts?limit=10&tag=demo"
+# Fetch daily spending trends
+curl "http://127.0.0.1:8000/cost-data/daily?limit=10&service=EC2"
+
+# Get optimization recommendations
+curl "http://127.0.0.1:8000/optimization/recommendations"
 ```
 
 ### Run the tests
 
 ```bash
-.venv/bin/python3 -m pytest          # all 35 tests
+.venv/bin/python3 -m pytest          # all tests
 .venv/bin/python3 -m pytest -v       # verbose
 ```
 
-The suite has two layers: **example‑based** tests (`tests/test_api.py`, 26 tests) covering specific HTTP
-scenarios, and **property‑based** tests (`tests/test_api_pbt.py`, 9 tests) that assert serialization
-round‑trips and field/pagination invariants over randomized inputs via Hypothesis.
+The suite has two layers: **example‑based** tests covering specific HTTP scenarios for cost data ingestion, trend queries, and optimization recommendations, and **property‑based** tests that assert cost calculation accuracy and anomaly detection invariants over randomized inputs via Hypothesis.
 
 ---
 
@@ -84,10 +85,10 @@ round‑trips and field/pagination invariants over randomized inputs via Hypothe
 .
 ├── main.py                 # FastAPI app: middleware, docs, health/root, startup
 ├── app/
-│   ├── models.py           # SQLModel tables + Pydantic schemas (BlogPost, Tag, pagination)
+│   ├── models.py           # SQLModel tables + Pydantic schemas (CostEntry, Recommendation, etc.)
 │   ├── database.py         # SQLite engine + get_session dependency + table creation
 │   └── api/
-│       └── endpoints.py    # The /posts CRUD + list/pagination/filter handlers
+│       └── endpoints.py    # The /cost-data, /optimization, /health handlers
 ├── tests/
 │   ├── test_api.py         # Example‑based tests (CRUD, validation, security headers)
 │   └── test_api_pbt.py     # Property‑based tests (Hypothesis)
@@ -122,26 +123,26 @@ This is the AI‑DLC workflow itself, loaded into the agent's context as steerin
     ├── construction/                 # Functional design, NFR design, code generation, build & test
     ├── operations/                   # Operations phase (placeholder for deploy/monitor)
     └── extensions/                   # Opt‑in rule packs
-        ├── security/                 #   Security Baseline (enabled here)
-        └── testing/                  #   Property‑Based Testing (enabled here)
+        ├── security/                 #   Security Baseline (enabled for financial data)
+        └── testing/                  #   Property‑Based Testing (enabled for cost accuracy)
 ```
 
 `core-workflow.md` is the heart of it. It defines three phases and the gates between them:
 
 - **🔵 Inception** — *what to build and why.* Workspace detection → requirements analysis →
   workflow planning. (User stories, application design, and units generation are **conditional** —
-  AI‑DLC skipped them here because the scope was a single, straightforward CRUD service.)
+  AI‑DLC may skip them if the scope is straightforward.)
 - **🟢 Construction** — *how to build it.* Per‑unit loop of functional design → NFR requirements →
   NFR design → infrastructure design → code generation, followed by build & test.
 - **🟡 Operations** — *how to deploy and run it.* A placeholder phase in this version.
 
-The workflow is **adaptive** (it skips stages that add no value for a small scope) and **gated** (the
+The workflow is **adaptive** (it skips stages that add no value for a given scope) and **gated** (the
 agent must present each stage's output and wait for explicit approval before continuing). Every user
 input and AI action is appended to an audit log — never paraphrased.
 
 ### `aidlc-docs/` — the artifacts produced for this app
 
-Everything the workflow generated while building *this* API, organized by phase:
+Everything the workflow generates while building *this* FinOps API, organized by phase:
 
 ```
 aidlc-docs/
@@ -152,7 +153,7 @@ aidlc-docs/
 │   └── plans/                        # execution-plan.md
 └── construction/
     ├── plans/                        # Per‑stage execution plans (with checkboxes)
-    ├── api-service/
+    ├── cost-analytics-service/
     │   ├── nfr-requirements/         # NFR requirements + tech‑stack decisions
     │   ├── nfr-design/               # Logical components + NFR design patterns
     │   └── code/                     # generation-summary.md (code is at the repo root, not here)
@@ -164,10 +165,11 @@ only in `aidlc-docs/`.** The docs describe and trace the code; they never contai
 
 The result: every line of code traces back to a requirement, every requirement to a planned stage, and
 every stage to an approval recorded in the audit log — turning an ad‑hoc "chat with an AI" into a
-**repeatable, auditable development loop**, which is the whole point of AI‑DLC.
+**repeatable, auditable development loop** for FinOps systems, which is the whole point of AI‑DLC.
 
 ---
 
 ## License
 
-Demo / example code (MIT), provided as‑is to illustrate the AWS AI‑DLC + Kiro workflow.
+Demo / example code (MIT), provided as‑is to illustrate the AWS AI‑DLC + Kiro workflow for FinOps use cases.
+

@@ -1,189 +1,173 @@
-# Execution Plan
+# CloudSpend Analytics API - Execution Plan
 
-## Detailed Analysis Summary
-
-### Project Type
-- **Greenfield**: New REST API project from scratch
-- **No existing codebase**: All components will be created
-
-### Change Impact Assessment
-- **User-facing changes**: Yes - Complete new API for blog post management
-- **Structural changes**: Yes - New FastAPI application structure
-- **Data model changes**: Yes - Blog post entity with tags relationship
-- **API changes**: Yes - Five REST endpoints with specific contracts
-- **NFR impact**: Yes - Security and testing requirements enabled
-
-### Scope Assessment
-- **Scope**: Single application component (REST API service)
-- **Complexity**: Moderate - Multiple operations, pagination, filtering, tag management
-- **Risk Level**: Low - Greenfield project with clear requirements, minimal dependencies
-- **Rollback Complexity**: Easy - No existing systems to coordinate with
-
-### Component Structure
-- **Primary Component**: BlogPostsAPI (FastAPI application)
-- **Persistence Layer**: SQLite database with SQLModel ORM
-- **API Layer**: REST endpoints (create, read, list, update, delete)
-- **Domain Layer**: BlogPost and Tag entities with relationships
+**Project**: CloudSpend Analytics API (FinOps Demo)  
+**Phase**: Inception  
+**Date**: 2026-06-19  
+**Status**: Approved
 
 ---
 
-## Workflow Visualization
+## Plan Summary
 
-```mermaid
-flowchart TD
-    Start(["User Request"])
-    
-    subgraph INCEPTION["🔵 INCEPTION PHASE"]
-        WD["Workspace Detection<br/><b>COMPLETED</b>"]
-        RA["Requirements Analysis<br/><b>COMPLETED</b>"]
-        WP["Workflow Planning<br/><b>IN PROGRESS</b>"]
-        AD["Application Design<br/><b>SKIP</b>"]
-        UG["Units Generation<br/><b>SKIP</b>"]
-    end
-    
-    subgraph CONSTRUCTION["🟢 CONSTRUCTION PHASE"]
-        FD["Functional Design<br/><b>SKIP</b>"]
-        NFRA["NFR Requirements<br/><b>EXECUTE</b>"]
-        NFRD["NFR Design<br/><b>EXECUTE</b>"]
-        ID["Infrastructure Design<br/><b>SKIP</b>"]
-        CG["Code Generation<br/><b>EXECUTE</b>"]
-        BT["Build and Test<br/><b>EXECUTE</b>"]
-    end
-    
-    subgraph OPERATIONS["🟡 OPERATIONS PHASE"]
-        OPS["Operations<br/><b>PLACEHOLDER</b>"]
-    end
-    
-    Start --> WD
-    WD --> RA
-    RA --> WP
-    WP --> NFRA
-    NFRA --> NFRD
-    NFRD --> CG
-    CG --> BT
-    BT --> OPS
-    OPS --> End(["Complete"])
-    
-    style WD fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
-    style RA fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
-    style WP fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
-    style CG fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
-    style BT fill:#4CAF50,stroke:#1B5E20,stroke-width:3px,color:#fff
-    
-    style NFRA fill:#FFA726,stroke:#E65100,stroke-width:3px,stroke-dasharray: 5 5,color:#000
-    style NFRD fill:#FFA726,stroke:#E65100,stroke-width:3px,stroke-dasharray: 5 5,color:#000
-    
-    style AD fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style FD fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style UG fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style ID fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    style OPS fill:#BDBDBD,stroke:#424242,stroke-width:2px,stroke-dasharray: 5 5,color:#000
-    
-    style INCEPTION fill:#BBDEFB,stroke:#1565C0,stroke-width:3px,color:#000
-    style CONSTRUCTION fill:#C8E6C9,stroke:#2E7D32,stroke-width:3px,color:#000
-    style OPERATIONS fill:#FFF59D,stroke:#F57F17,stroke-width:3px,color:#000
-    style Start fill:#CE93D8,stroke:#6A1B9A,stroke-width:3px,color:#000
-    style End fill:#CE93D8,stroke:#6A1B9A,stroke-width:3px,color:#000
-    
-    linkStyle default stroke:#333,stroke-width:2px
-```
+This document outlines the recommended execution path from Requirements Analysis through Operations deployment.
 
 ---
 
-## Phases to Execute
+## Construction Phase Units
 
-### 🔵 INCEPTION PHASE
-- [x] Workspace Detection - **COMPLETED**
-- [x] Requirements Analysis - **COMPLETED**
-- [x] Workflow Planning - **IN PROGRESS**
-- [ ] **Application Design - SKIP**
-  - **Rationale**: Single application component with straightforward structure. No complex inter-component dependencies or architectural decisions needed beyond what requirements specify. Design is implicit in requirements.
+Based on requirements analysis, the project will be built as **one primary unit** with **two conceptual subsystems**:
 
-- [ ] **Units Generation - SKIP**
-  - **Rationale**: Single unit of work (REST API service). No need to decompose into multiple parallel units. Code generation will proceed with a single unit.
+### Unit 1: Cost Analytics Service (API)
+The single monolithic API service combining:
+- Cost data ingestion and persistence
+- Daily spending trend aggregation
+- Anomaly detection engine
+- Optimization recommendation management
+- All database operations and models
 
-### 🟢 CONSTRUCTION PHASE
-- [ ] **Functional Design - SKIP**
-  - **Rationale**: Business logic is minimal and straightforward (CRUD operations with cursor pagination). Requirements are sufficient to proceed directly to code generation. No complex algorithms or state management requiring detailed design.
-
-- [ ] **NFR Requirements - EXECUTE**
-  - **Rationale**: Security baseline and property-based testing extensions are enabled. Must determine specific NFR implementations (security headers, input validation patterns, test framework selection).
-
-- [ ] **NFR Design - EXECUTE**
-  - **Rationale**: Incorporate security patterns (error handling, validation, logging) and PBT framework selection into the application design before code generation.
-
-- [ ] **Infrastructure Design - SKIP**
-  - **Rationale**: Standalone Python process with SQLite database. No cloud infrastructure, load balancers, or complex deployment configuration. Application runs locally as specified in requirements.
-
-- [ ] **Code Generation - EXECUTE** (Always)
-  - **Rationale**: Generate complete application code including models, API endpoints, database layer, and comprehensive tests.
-
-- [ ] **Build and Test - EXECUTE** (Always)
-  - **Rationale**: Build instructions, test execution, and verification of all components.
-
-### 🟡 OPERATIONS PHASE
-- [ ] Operations - **PLACEHOLDER**
-  - **Rationale**: Future deployment and monitoring workflows (not yet implemented)
+**Rationale**: 
+- Scope is small (6 endpoints)
+- All operations share the same database and models
+- No inter-service dependencies
+- Monolithic approach keeps complexity low while showcasing AI-DLC workflow
 
 ---
 
-## Summary of Execution
+## Recommended Phase Execution
 
-**Stages to Execute: 5**
-1. NFR Requirements Assessment
-2. NFR Design & Pattern Selection
-3. Code Generation (Planning + Generation)
-4. Build and Test
+### 🔵 INCEPTION PHASE (Current)
 
-**Stages to Skip: 4**
-- Application Design (clear single-component structure)
-- Units Generation (single unit of work)
-- Functional Design (straightforward business logic)
-- Infrastructure Design (standalone Python process)
+**Status**: ✅ Complete
 
-**Total Estimated Timeline**: 4-6 hours
-- NFR Assessment: 30 minutes
-- NFR Design: 1 hour
-- Code Generation Planning: 1 hour
-- Code Generation & Testing: 2-3 hours
-- Build & Verification: 1 hour
+- [x] Workspace Detection
+- [x] Requirements Analysis
+- [x] Verification Questions & Answers
+- [x] Workflow Planning
+
+**Remaining**: None — Inception approved. Ready for Construction.
 
 ---
 
-## Quality Gates & Success Criteria
+### 🟢 CONSTRUCTION PHASE (Next)
 
-### Functional Completeness
-- ✅ All five endpoints implemented (create, read, list, update, delete)
-- ✅ Tag filtering and cursor-based pagination working
-- ✅ Proper HTTP status codes (201, 200, 204, 400, 404, 500)
-- ✅ Error responses with standard format
+#### Per-Unit Loop: Cost Analytics Service
 
-### Security Compliance
-- ✅ All SECURITY rules verified and compliant
-- ✅ Input validation on all parameters
-- ✅ Error handling with no internal details exposed
-- ✅ Application-level logging configured
+**Stage 1: Functional Design**
+- [ ] Design data models (CostEntry, Recommendation, Tag)
+- [ ] Define business logic for:
+  - Anomaly detection algorithm (7-day rolling average, 25% threshold)
+  - Daily aggregation queries
+  - Recommendation status transitions
+- [ ] Create ERD (Entity Relationship Diagram) and business logic diagrams
+- **Decision Point**: Approve functional design before NFR Requirements
 
-### Testing Coverage
-- ✅ Property-based tests for serialization round-trips
-- ✅ Property-based tests for invariants (pagination, filtering)
-- ✅ Example-based tests for critical business scenarios
-- ✅ All tests passing in build verification
+**Stage 2: NFR Requirements** (Conditional)
+- [ ] Analyze performance requirements (< 500ms response times)
+- [ ] Security requirements for financial data (encryption, logging, error handling)
+- [ ] Evaluate AWS services for FinOps integration (optional):
+  - CloudWatch for monitoring
+  - Secrets Manager for future credential storage
+  - Cost Anomaly Detection service (AWS native) as reference
+- [ ] Document tech stack decisions
+- **Decision Point**: Approve NFR Requirements before NFR Design
 
-### Code Quality
-- ✅ SQLModel ORM properly configured
-- ✅ FastAPI best practices followed
-- ✅ Type hints throughout
-- ✅ Comprehensive docstrings
-- ✅ Clean code structure with separation of concerns
+**Stage 3: NFR Design** (Conditional on Stage 2)
+- [ ] Design security patterns (input validation, error handling, logging)
+- [ ] Design performance patterns (database indexing, query optimization)
+- [ ] Design monitoring/observability approach
+- **Decision Point**: Approve NFR Design before Infrastructure Design
+
+**Stage 4: Infrastructure Design** (Conditional)
+- [ ] Define database schema with indexes
+- [ ] Plan local SQLite setup for development
+- [ ] Document deployment approach (standalone Python process)
+- **Decision Point**: Approve Infrastructure Design before Code Generation
+
+**Stage 5: Code Generation** (Always)
+- [ ] Generate data models (models.py)
+- [ ] Generate database layer (database.py)
+- [ ] Generate API endpoints (endpoints.py)
+- [ ] Generate test suite (test_api.py + test_api_pbt.py)
+- [ ] Generate security middleware
+- [ ] Generate main application entry point (main.py)
+- **Decision Point**: Approve code generation before Build & Test
+
+#### Build and Test
+
+- [ ] Create build instructions
+- [ ] Create unit test instructions (example-based tests)
+- [ ] Create integration test instructions
+- [ ] Create property-based test instructions
+- [ ] Execute build and verify all tests pass
+- [ ] Create comprehensive test report
+- **Decision Point**: Approve Build & Test before Operations
 
 ---
 
-## Next Steps After Approval
+### 🟡 OPERATIONS PHASE (Future)
 
-Upon your approval:
+**Status**: Placeholder — Operations phase is a future expansion in AI-DLC v2.
 
-1. **Proceed to NFR Requirements Assessment** - Determine specific implementations for security patterns and PBT framework
-2. **Execute NFR Design** - Design security headers, validation approach, error handling patterns
-3. **Execute Code Generation** - Generate all application code and tests
-4. **Execute Build & Test** - Verify all components work correctly
+Current scope includes deployment instructions in Build & Test artifact.
+
+---
+
+## Key Decisions
+
+| Decision | Rationale | Gated By |
+|----------|-----------|----------|
+| Single Unit (Monolithic) | Scope is small; no inter-service complexity | Inception approval |
+| Cursor-Based Pagination | Consistency + performance for FinOps queries | Requirements |
+| 25% Anomaly Threshold | Practical signal-to-noise ratio for organizations | Requirements |
+| Decimal Type for Costs | Financial accuracy, no rounding errors | NFR Requirements |
+| SQLite (File-Based) | Simple persistence for demo, aligns with original tech stack | NFR Requirements |
+| Property-Based Testing | Mandatory extension; cost calculations must be verified | NFR Requirements + Code Gen |
+| Security Baseline | Mandatory extension; financial data is sensitive | NFR Requirements + Code Gen |
+
+---
+
+## Extensions Enforced
+
+| Extension | Enforcement | Justification |
+|-----------|-------------|---------------|
+| **Security Baseline** | Blocking constraint | Financial data requires strict security controls |
+| **Property-Based Testing** | Blocking constraint | Cost calculations verified across random inputs |
+
+Both extensions will be validated at each phase gate.
+
+---
+
+## Success Criteria
+
+✅ All functional requirements met (6 endpoints working)  
+✅ All NFR requirements met (performance, security, persistence)  
+✅ All extensions enforced (security + PBT)  
+✅ Comprehensive test coverage (example + property-based)  
+✅ Audit trail complete (all interactions logged in audit.md)  
+✅ Code deployable as standalone Python process
+
+---
+
+## Timeline Estimate
+
+| Phase | Duration | Gating |
+|-------|----------|--------|
+| Inception | ✅ Complete | User approval required |
+| Functional Design | ~1 turn | User approval required |
+| NFR Requirements | ~1 turn | User approval required |
+| NFR Design | ~1 turn | User approval required |
+| Infrastructure Design | ~1 turn | User approval required |
+| Code Generation | ~2-3 turns (plan + execution) | User approval required |
+| Build & Test | ~1-2 turns | User approval required |
+
+**Total estimated interactions**: ~9-11 gated approval points
+
+---
+
+## Notes
+
+- Each stage has an explicit approval gate — the workflow will not proceed to the next stage until user confirms
+- All user inputs and AI responses will be logged in audit.md with timestamps
+- Each artifact (requirements, NFR design, code plan, test report) is versioned and committed
+- If user requests changes at any gate, the stage can be repeated without losing prior work
+- This plan is adaptive — stages can be skipped or expanded based on emerging needs

@@ -1,107 +1,81 @@
-# Requirements Verification Questions
+# CloudSpend Analytics API - Requirement Verification Questions
 
-Please answer the following questions to clarify requirements for the blog-posts-api project.
+This document captures verification questions asked during Requirements Analysis to ensure requirements completeness and clarity.
 
-## Question 1
-For the list endpoint, what filtering and sorting capabilities are needed beyond tag filtering?
+---
 
-A) Only tag filtering (as mentioned in the initial request)
-B) Tag filtering, plus author filtering
-C) Tag filtering, author filtering, and date range filtering
-D) Comprehensive filtering (tags, author, date range, status) and sorting options
-E) Other (please describe after [Answer]: tag below)
+## Verification Q&A
 
-[Answer]: A
+### Q1: Cost Data Completeness
+**Question**: Should cost entries support multiple currencies, or assume all costs are in USD?
 
-## Question 2
-Should the list endpoint support multiple tags (e.g., posts tagged with BOTH tag1 AND tag2, or posts with EITHER tag1 OR tag2)?
+**Decision**: Assume all costs are in USD. The demo is scoped to single-currency operations. Multi-currency support can be added in future versions if needed.
 
-A) Single tag filtering only
-B) Multiple tags with AND logic (post must have all specified tags)
-C) Multiple tags with OR logic (post must have at least one specified tag)
-D) Both AND and OR support (user specifies which logic to use)
-E) Other (please describe after [Answer]: tag below)
+---
 
-[Answer]: A
+### Q2: Anomaly Detection Recency
+**Question**: How should anomaly detection behave with less than 7 days of historical data?
 
-## Question 3
-What validation and constraints are needed for blog post fields?
+**Decision**: Use available data (minimum 1 day) to establish rolling average. If fewer than 3 days exist, flag all entries as potential anomalies with a note about insufficient historical data. This allows early detection even with limited data.
 
-A) Basic validation only (title and content are required, non-empty)
-B) Basic validation plus field length limits (e.g., title max 200 chars)
-C) Comprehensive validation including character limits, HTML escaping, and allowed characters
-D) Enhanced validation with custom business rules (e.g., duplicate title checking)
-E) Other (please describe after [Answer]: tag below)
+---
 
-[Answer]: A
+### Q3: Recommendation Creation
+**Question**: Are recommendations created via API or pre-loaded/managed separately?
 
-## Question 4
-How should pagination work for the list endpoint?
+**Decision**: For this demo, recommendations are pre-loaded or managed separately (not exposed in this API). The API only provides read/update access to recommendations. This keeps the scope focused on cost tracking and analysis rather than recommendation generation logic.
 
-A) Limit/offset pagination only
-B) Cursor-based pagination only
-C) Both limit/offset AND cursor-based options
-D) Other (please describe after [Answer]: tag below)
+---
 
-[Answer]: B
+### Q4: Historical Cost Data
+**Question**: Should the API support backdated cost entries (costs from past timestamps)?
 
-## Question 5
-What should the default and maximum page sizes be for the list endpoint?
+**Decision**: Yes. Accept any valid ISO 8601 timestamp, but not future-dated. This allows importing historical cost data from external sources (e.g., AWS Cost Explorer).
 
-A) Default 10, Max 50
-B) Default 20, Max 100
-C) Default 50, Max 200
-D) Other (please describe after [Answer]: tag below)
+---
 
-[Answer]: B
+### Q5: Tag Filtering Breadth
+**Question**: Should tag filtering be exact match or support wildcards/partial matches?
 
-## Question 6
-Should the API support batch operations (e.g., delete multiple posts, add tags to multiple posts)?
+**Decision**: Exact match only. Tags are created implicitly during cost entry creation and are treated as exact identifiers. Wildcards can be added later if filtering complexity increases.
 
-A) No batch operations (only single-item operations)
-B) Yes, implement batch delete
-C) Yes, implement batch operations for delete, update, and tag management
-D) Other (please describe after [Answer]: tag below)
+---
 
-[Answer]: A
+### Q6: Cost Modifications
+**Question**: Once a cost entry is created, can it be updated or only deleted?
 
-## Question 7
-What error handling and HTTP status codes are expected?
+**Decision**: Cost entries cannot be updated (no PATCH endpoint). They can only be deleted if mistakenly created. This enforces immutability of the financial record once ingested, which is important for audit compliance.
 
-A) Basic error handling (400 Bad Request, 404 Not Found, 500 Internal Server Error)
-B) Standard REST error handling with detailed error messages and proper status codes
-C) Enhanced error handling with error codes, validation details, and request ID tracking
-D) Other (please describe after [Answer]: tag below)
+---
 
-[Answer]: B
+### Q7: Service Name Standardization
+**Question**: Should service names be validated against a predefined AWS service list?
 
-## Question 8
-Should the API include metadata in responses (e.g., pagination info, response timestamps)?
+**Decision**: No hard validation against a service list. Accept any alphanumeric + hyphen string. This allows custom service names and avoids tight coupling to AWS service definitions. Validation can be tightened in future versions.
 
-A) No metadata, just the data
-B) Minimal metadata (pagination info for list responses)
-C) Standard metadata (pagination, timestamps, response status indicators)
-D) Extended metadata (pagination, timestamps, API version, response times)
-E) Other (please describe after [Answer]: tag below)
+---
 
-[Answer]: B
+### Q8: Decimal Precision
+**Question**: How many decimal places should be supported for cost amounts?
 
-## Question 9: Security Baseline Extension
-Should security extension rules be enforced for this project?
+**Decision**: 2 decimal places (USD cents). Use Python `Decimal` type with `ROUND_HALF_UP` rounding to ensure accuracy. Costs more granular than cents can be aggregated before submission.
 
-A) Yes — enforce all SECURITY rules as blocking constraints (recommended for production-grade applications)
-B) No — skip all SECURITY rules (suitable for PoCs, prototypes, and experimental projects)
-C) Other (please describe after [Answer]: tag below)
+---
 
-[Answer]: A
+### Q9: Pagination Cursor Format
+**Question**: Should cursor be opaque (base64-encoded ID) or human-readable (timestamp/ID)?
 
-## Question 10: Property-Based Testing Extension
-Should property-based testing (PBT) rules be enforced for this project?
+**Decision**: Opaque base64-encoded format for API stability. Internal cursor format can change without breaking clients.
 
-A) Yes — enforce all PBT rules as blocking constraints (recommended for projects with business logic, data transformations, serialization, or stateful components)
-B) Partial — enforce PBT rules only for pure functions and serialization round-trips (suitable for projects with limited algorithmic complexity)
-C) No — skip all PBT rules (suitable for simple CRUD applications, UI-only projects, or thin integration layers with no significant business logic)
-D) Other (please describe after [Answer]: tag below)
+---
 
-[Answer]: A
+### Q10: Deleted Entry Querying
+**Question**: After a cost entry is deleted, should it remain queryable in anomaly detection or trend reports?
 
+**Decision**: Once deleted, the entry is removed from all queries. Deleted costs do not affect anomaly baselines. This ensures deletion is semantically clean.
+
+---
+
+## Summary
+
+All questions have been addressed and incorporated into the requirements document. The requirements are now ready for Implementation Planning phase.

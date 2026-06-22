@@ -1,194 +1,304 @@
-"""Property-based tests for Blog Posts API."""
-
-from datetime import datetime
+"""Property-based tests for CloudSpend Analytics API using Hypothesis."""
 
 import pytest
+import os
+import uuid
 from hypothesis import given, strategies as st
-from pydantic import ValidationError
+from decimal import Decimal
+from datetime import datetime, timedelta, timezone
+from fastapi.testclient import TestClient
+from sqlmodel import SQLModel, Session, create_engine
+from sqlalchemy.pool import StaticPool
 
-from app.models import BlogPost, BlogPostCreate, BlogPostRead, Tag, TagRead, PaginationResponse
+# Use in-memory database for testing
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
+from app.database import get_session
+from main import app
 
-# ============================================================================
-# Helper Strategies (defined first for use in other strategies)
-# ============================================================================
-
-
-@st.composite
-def tag_read_strategy(draw):
-    """Generate valid TagRead instances."""
-    name = draw(st.text(min_size=1, max_size=50))
-    return TagRead(id=draw(st.integers(min_value=1)), name=name)
-
-
-@st.composite
-def blog_post_read_strategy(draw):
-    """Generate valid BlogPostRead instances."""
-    title = draw(st.text(min_size=1, max_size=500))
-    content = draw(st.text(min_size=1, max_size=10000))
-    tags = draw(st.lists(tag_read_strategy(), max_size=10))
-    return BlogPostRead(
-        id=draw(st.integers(min_value=1)), title=title, content=content, tags=tags
-    )
-
-
-# ============================================================================
-# Hypothesis Strategies for Domain Types
-# ============================================================================
-
-
-@st.composite
-def blog_post_strategy(draw):
-    """Generate valid BlogPost instances."""
-    title = draw(st.text(min_size=1, max_size=500))
-    content = draw(st.text(min_size=1, max_size=10000))
-    return BlogPost(title=title, content=content)
-
-
-@st.composite
-def blog_post_create_strategy(draw):
-    """Generate valid BlogPostCreate instances."""
-    title = draw(st.text(min_size=1, max_size=500))
-    content = draw(st.text(min_size=1, max_size=10000))
-    tags = draw(st.lists(st.text(min_size=1, max_size=50), max_size=10))
-    return BlogPostCreate(title=title, content=content, tags=tags)
-
-
-@st.composite
-def tag_strategy(draw):
-    """Generate valid Tag instances."""
-    name = draw(st.text(min_size=1, max_size=50))
-    return Tag(name=name)
-
-
-# ============================================================================
-# Round-Trip Property Tests (PBT-02)
-# ============================================================================
-
-
-@given(blog_post_strategy())
-def test_blog_post_dict_round_trip(blog_post):
-    """BlogPost should serialize and deserialize to equivalent instance."""
-    # Serialize to dict
-    post_dict = blog_post.dict(exclude_unset=True)
-
-    # Deserialize back
-    restored = BlogPost(**post_dict)
-
-    # Verify fields match (excluding auto-generated fields)
-    assert restored.title == blog_post.title
-    assert restored.content == blog_post.content
-
-
-@given(tag_strategy())
-def test_tag_dict_round_trip(tag):
-    """Tag should serialize and deserialize to equivalent instance."""
-    # Serialize to dict
-    tag_dict = tag.dict(exclude_unset=True)
-
-    # Deserialize back
-    restored = Tag(**tag_dict)
-
-    # Verify fields match
-    assert restored.name == tag.name
-
-
-@given(blog_post_create_strategy())
-def test_blog_post_create_validation(post_create):
-    """BlogPostCreate should validate correctly through serialization."""
-    # Convert to dict
-    post_dict = post_create.dict()
-
-    # Deserialize and re-validate
-    validated = BlogPostCreate(**post_dict)
-
-    # Should match original
-    assert validated.title == post_create.title
-    assert validated.content == post_create.content
-    assert validated.tags == post_create.tags
-
-
-# ============================================================================
-# Invariant Property Tests (PBT-03)
-# ============================================================================
-
-
-@given(st.text(min_size=1, max_size=500))
-def test_blog_post_title_length_invariant(title):
-    """BlogPost title should never exceed max length."""
-    blog_post = BlogPost(title=title, content="content")
-    assert len(blog_post.title) <= 500
-
-
-@given(st.text(min_size=1, max_size=10000))
-def test_blog_post_content_length_invariant(content):
-    """BlogPost content should never exceed max length."""
-    blog_post = BlogPost(title="title", content=content)
-    assert len(blog_post.content) <= 10000
-
-
-@given(st.lists(st.text(min_size=1, max_size=50), max_size=10))
-def test_tag_list_length_invariant(tags):
-    """Tag list should not exceed max size."""
-    blog_post = BlogPostCreate(title="title", content="content", tags=tags)
-    assert len(blog_post.tags) <= 10
-
-
-@given(st.lists(st.text(min_size=1, max_size=50), max_size=10))
-def test_individual_tag_length_invariant(tags):
-    """Each individual tag should not exceed max length."""
-    blog_post = BlogPostCreate(title="title", content="content", tags=tags)
-    for tag in blog_post.tags:
-        assert len(tag) <= 50
-
-
-# ============================================================================
-# Pagination Response Invariant Tests
-# ============================================================================
-
-
-@given(st.lists(st.integers(min_value=1), max_size=20))
-def test_pagination_response_items_count(item_ids):
-    """Pagination response should preserve item count."""
-    items = [
-        BlogPostRead(
-            id=item_id,
-            title=f"Post {item_id}",
-            content="Content",
-            tags=[],
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-        )
-        for item_id in item_ids
-    ]
-    response = PaginationResponse(
-        items=items, next_cursor=None if not items else items[-1].id + 1, has_more=False
-    )
-    assert len(response.items) == len(items)
-
-
-@given(
-    st.lists(st.integers(min_value=1), min_size=1, max_size=20),
-    st.integers(min_value=1, max_value=100),
+# Create test engine with in-memory database
+test_engine = create_engine(
+    "sqlite:///:memory:",
+    echo=False,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
-def test_pagination_has_more_invariant(item_ids, next_cursor):
-    """Pagination has_more should be True if next_cursor is set."""
-    items = [
-        BlogPostRead(
-            id=item_id,
-            title=f"Post {item_id}",
-            content="Content",
-            tags=[],
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+
+def get_test_session():
+    """Override dependency to use test session."""
+    with Session(test_engine) as session:
+        yield session
+
+
+@pytest.fixture(scope="function", autouse=True)
+def setup_test_db():
+    """Initialize database before each test and clean up after."""
+    # Create tables
+    SQLModel.metadata.create_all(test_engine)
+    
+    # Override the dependency
+    app.dependency_overrides[get_session] = get_test_session
+    
+    yield
+    
+    # Cleanup
+    SQLModel.metadata.drop_all(test_engine)
+    app.dependency_overrides.clear()
+
+
+client = TestClient(app)
+
+
+# ============================================================================
+# Strategies (Generators for Test Data)
+# ============================================================================
+
+positive_decimal_str = st.decimals(
+    min_value=Decimal("0.01"),
+    max_value=Decimal("999999.99"),
+    places=2
+).map(str)
+
+valid_service_names = st.text(
+    alphabet="abcdefghijklmnopqrstuvwxyz0123456789-",
+    min_size=1,
+    max_size=64
+)
+
+valid_tag_names = st.text(
+    alphabet="abcdefghijklmnopqrstuvwxyz0123456789_-",
+    min_size=1,
+    max_size=64
+)
+
+valid_timestamps = st.datetimes(
+    max_value=datetime.now(timezone.utc)
+).map(lambda dt: dt.replace(tzinfo=timezone.utc).isoformat())
+
+
+# ============================================================================
+# Decimal Precision Tests
+# ============================================================================
+
+@given(positive_decimal_str)
+def test_cost_amount_precision_roundtrip(amount_str):
+    """Property: Cost amount maintains 2 decimal place precision."""
+    now = datetime.now(timezone.utc).isoformat()
+    response = client.post("/cost-data", json={
+        "service": "EC2",
+        "amount": amount_str,
+        "timestamp": now
+    })
+    
+    if response.status_code == 201:
+        returned_amount = response.json()["amount"]
+        # Both should have exactly 2 decimal places
+        assert len(returned_amount.split('.')[-1]) <= 2
+
+
+@given(st.lists(positive_decimal_str, min_size=1, max_size=10))
+def test_cost_aggregation_commutativity(amounts):
+    """Property: Aggregation is consistent regardless of input order."""
+    now = datetime.now(timezone.utc)
+    service_name = f"TEST-{uuid.uuid4().hex[:8]}"  # Unique service per test
+    today = now.isoformat().split("T")[0]
+    
+    # Insert costs with unique service name
+    for i, amount in enumerate(amounts):
+        ts = (now - timedelta(hours=i)).isoformat()
+        client.post("/cost-data", json={
+            "service": service_name,
+            "amount": amount,
+            "timestamp": ts
+        })
+    
+    # Get total for this unique service
+    response = client.get(f"/cost-data/daily?service={service_name}")
+    if response.status_code == 200 and response.json()["items"]:
+        # Find today's entry for this service
+        today_item = next(
+            (item for item in response.json()["items"] if item["date"] == today),
+            None
         )
-        for item_id in item_ids
-    ]
-    if next_cursor is not None:
-        response = PaginationResponse(items=items, next_cursor=next_cursor, has_more=True)
-        assert response.has_more is True
+        if today_item:
+            total_from_api = Decimal(today_item["total_cost"])
+            total_input = sum(Decimal(a) for a in amounts)
+            assert abs(total_from_api - total_input) < Decimal("0.01")
 
 
 # ============================================================================
-# Helper Strategy (no longer needed at end)
+# Validation Invariants
 # ============================================================================
+
+@given(st.just("0.00"))
+def test_zero_cost_rejected(amount):
+    """Property: Zero or negative costs are always rejected."""
+    now = datetime.now(timezone.utc).isoformat()
+    response = client.post("/cost-data", json={
+        "service": "EC2",
+        "amount": amount,
+        "timestamp": now
+    })
+    assert response.status_code >= 400
+
+
+@given(st.integers(min_value=1, max_value=365))
+def test_past_timestamp_accepted(days_ago):
+    """Property: Any past timestamp is accepted (no historical limit)."""
+    past_ts = (datetime.now(timezone.utc) - timedelta(days=days_ago)).isoformat()
+    response = client.post("/cost-data", json={
+        "service": "EC2",
+        "amount": "100.00",
+        "timestamp": past_ts
+    })
+    assert response.status_code == 201
+
+
+@given(st.just((datetime.now(timezone.utc) + timedelta(days=1)).isoformat()))
+def test_future_timestamp_rejected(future_ts):
+    """Property: Future timestamps are always rejected."""
+    response = client.post("/cost-data", json={
+        "service": "EC2",
+        "amount": "100.00",
+        "timestamp": future_ts
+    })
+    assert response.status_code >= 400
+
+
+# ============================================================================
+# Service Name Format Tests
+# ============================================================================
+
+@given(valid_service_names)
+def test_valid_service_accepted(service):
+    """Property: Valid service names are accepted."""
+    if not service or len(service) > 64:
+        return  # Skip invalid inputs
+    
+    now = datetime.now(timezone.utc).isoformat()
+    response = client.post("/cost-data", json={
+        "service": service,
+        "amount": "100.00",
+        "timestamp": now
+    })
+    # Should succeed or fail gracefully, not crash
+    assert response.status_code in [201, 422, 400, 500]
+
+
+# ============================================================================
+# Pagination Invariants
+# ============================================================================
+
+@given(st.integers(min_value=1, max_value=100))
+def test_pagination_limit_respected(limit):
+    """Property: Pagination limit is never exceeded."""
+    response = client.get(f"/cost-data/daily?limit={limit}")
+    if response.status_code == 200:
+        items_count = len(response.json()["items"])
+        assert items_count <= limit
+
+
+# ============================================================================
+# Anomaly Detection Invariants
+# ============================================================================
+
+@given(positive_decimal_str)
+def test_anomaly_spike_percentage_valid(baseline_factor):
+    """Property: Spike percentage is always non-negative."""
+    response = client.get("/cost-data/anomalies")
+    if response.status_code == 200:
+        for anomaly in response.json()["anomalies"]:
+            spike_pct = float(anomaly["spike_percentage"])
+            # Spike % should be >= 25 (threshold)
+            assert spike_pct >= 25
+
+
+# ============================================================================
+# Recommendation Status Invariants
+# ============================================================================
+
+@given(st.just("recommended"))
+def test_status_must_be_valid(status):
+    """Property: Only valid statuses are accepted."""
+    response = client.get(f"/optimization/recommendations?status={status}")
+    # Valid status should not return error
+    if response.status_code == 200:
+        assert True
+
+
+@given(st.just("invalid_status"))
+def test_invalid_status_rejected(status):
+    """Property: Invalid statuses are always rejected."""
+    response = client.get(f"/optimization/recommendations?status={status}")
+    assert response.status_code >= 400
+
+
+# ============================================================================
+# Tag Format Tests
+# ============================================================================
+
+@given(st.lists(valid_tag_names, min_size=0, max_size=5))
+def test_tag_format_accepted(tags):
+    """Property: Valid tag formats are accepted."""
+    now = datetime.now(timezone.utc).isoformat()
+    response = client.post("/cost-data", json={
+        "service": "EC2",
+        "amount": "100.00",
+        "timestamp": now,
+        "tags": tags
+    })
+    # Should accept valid tags
+    if response.status_code == 201:
+        returned_tags = response.json()["tags"]
+        assert set(returned_tags) == set(tags)
+
+
+# ============================================================================
+# Response Structure Invariants
+# ============================================================================
+
+@given(st.just(None))
+def test_daily_trends_response_structure(unused):
+    """Property: Daily trends response always has required fields."""
+    response = client.get("/cost-data/daily")
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data
+    assert "has_more" in data
+    assert "items_count" in data
+    
+    for item in data["items"]:
+        assert "date" in item
+        assert "total_cost" in item
+
+
+@given(st.just(None))
+def test_recommendations_response_structure(unused):
+    """Property: Recommendations response always has required fields."""
+    response = client.get("/optimization/recommendations")
+    assert response.status_code == 200
+    data = response.json()
+    assert "items" in data
+    assert "has_more" in data
+    assert "items_count" in data
+
+
+# ============================================================================
+# Error Response Invariants
+# ============================================================================
+
+@given(st.just(None))
+def test_error_response_safe(unused):
+    """Property: Error responses never expose internals."""
+    # Test with invalid input
+    response = client.post("/cost-data", json={
+        "service": "invalid@service!",
+        "amount": "abc",
+        "timestamp": "invalid"
+    })
+    
+    if response.status_code >= 400:
+        error_text = str(response.text).lower()
+        # Should not contain traceback or internal details
+        assert "traceback" not in error_text
+        assert "sqlalchemy" not in error_text

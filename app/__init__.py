@@ -1,1 +1,1 @@
-"""Blog Posts API application package."""
+"""CloudSpend Analytics API application package."""

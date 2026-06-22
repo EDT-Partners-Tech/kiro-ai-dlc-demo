@@ -1,18 +1,11 @@
-# Core Dependencies
-fastapi==0.104.0
-sqlmodel==0.0.14
+fastapi==0.115.0
 uvicorn[standard]==0.24.0
-pydantic==2.5.0
-sqlalchemy==2.0.23
-
-# Testing Dependencies
-pytest==7.4.3
-pytest-asyncio==0.21.1
-httpx==0.25.1
-hypothesis==6.92.0
-
-# Development Dependencies
-black==23.12.0
-ruff==0.1.8
-mypy==1.7.0
-pytest-cov==4.1.0
+sqlmodel==0.0.21
+sqlalchemy==2.0.51
+pydantic==2.13.4
+httpx==0.28.1
+pytest==9.0.3
+pytest-cov==7.1.0
+hypothesis==6.155.2
+python-json-logger==4.1.0
+python-dotenv==1.2.2
