@@ -83,16 +83,15 @@ The suite has two layers: **example‑based** tests covering specific HTTP scena
 
 ```
 .
-├── main.py                 # FastAPI app: middleware, docs, health/root, startup
+├── main.py                 # FastAPI app: middleware, security headers, docs, health/root + all route handlers
 ├── app/
 │   ├── models.py           # SQLModel tables + Pydantic schemas (CostEntry, Recommendation, etc.)
 │   ├── database.py         # SQLite engine + get_session dependency + table creation
-│   └── api/
-│       └── endpoints.py    # The /cost-data, /optimization, /health handlers
+│   └── seed.py             # Seeds demo cost data + recommendations into cloudspend.db
 ├── tests/
 │   ├── test_api.py         # Example‑based tests (CRUD, validation, security headers)
 │   └── test_api_pbt.py     # Property‑based tests (Hypothesis)
-├── docs/                   # Human‑authored API reference (README.md, API.md)
+├── OVERVIEW.md             # Plain‑English "what the app does" one‑pager
 ├── requirements.txt
 ├── pyproject.toml
 ├── aidlc-docs/             # ← every artifact AI‑DLC produced for THIS app (see below)
